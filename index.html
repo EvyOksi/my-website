@@ -11,9 +11,8 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            background: #f0f4f8;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            position: relative;
         }
         .container {
             text-align: center;
@@ -22,10 +21,10 @@
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
         }
         h1 {
-            font-size: 1.8em;
+            font-size: 2em;
             color: #333;
             margin-bottom: 15px;
         }
@@ -33,7 +32,7 @@
             width: 80%;
             padding: 10px;
             margin: 10px 0;
-            font-size: 1em;
+            font-size: 1.2em;
             border: 2px solid #ddd;
             border-radius: 5px;
             transition: border-color 0.3s ease;
@@ -43,15 +42,15 @@
             outline: none;
         }
         button {
-            padding: 10px 15px;
-            font-size: 1em;
+            padding: 12px 20px;
+            font-size: 1.2em;
             cursor: pointer;
             background: #007BFF;
             color: #fff;
             border: none;
             border-radius: 5px;
             transition: background 0.3s ease, transform 0.3s ease;
-            margin-top: 10px;
+            margin-top: 15px;
         }
         button:hover {
             background: #0056b3;
@@ -64,57 +63,31 @@
         }
         img {
             border-radius: 50%;
-            width: 100px;
-            height: 100px;
-            margin-bottom: 10px;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 15px;
         }
         .output {
-            font-size: 1em;
+            font-size: 1.1em;
             padding: 10px;
+            margin-top: 10px;
             border-radius: 5px;
             background: #f9f9f9;
-            margin-top: 10px;
         }
-        .corner-design {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: #007BFF;
-            border-radius: 50%;
-        }
-        .top-left {
-            top: 0;
-            left: 0;
-            border-top-left-radius: 0;
-        }
-        .top-right {
-            top: 0;
-            right: 0;
-            border-top-right-radius: 0;
-        }
-        .bottom-left {
-            bottom: 0;
-            left: 0;
-            border-bottom-left-radius: 0;
-        }
-        .bottom-right {
-            bottom: 0;
-            right: 0;
-            border-bottom-right-radius: 0;
+        .loading {
+            font-size: 1.5em;
+            color: #007BFF;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="corner-design top-left"></div>
-    <div class="corner-design top-right"></div>
-    <div class="corner-design bottom-left"></div>
-    <div class="corner-design bottom-right"></div>
-
     <div class="container">
         <h1>Roblox Profile Lookup</h1>
         <input type="text" id="username" placeholder="Enter Roblox username">
         <button onclick="fetchRobloxData()">Fetch Profile</button>
-
+        <div class="loading" id="loadingText">Loading...</div>
+        
         <div class="profile" id="profileSection">
             <img id="avatar" src="" alt="Profile Picture">
             <div class="output"><strong>Username:</strong> <span id="displayUsername"></span></div>
@@ -131,20 +104,24 @@
             const usernameInput = document.getElementById("username").value.trim();
             const fetchErrors = document.getElementById("fetchErrors");
             fetchErrors.innerHTML = ""; // Clear previous errors
+            const loadingText = document.getElementById("loadingText");
+            const profileSection = document.getElementById("profileSection");
 
             if (!usernameInput) {
                 alert("Please enter a username.");
                 return;
             }
 
-            const profileSection = document.getElementById("profileSection");
-            profileSection.style.display = "none"; // Hide profile section initially
+            // Show loading text and hide profile section
+            loadingText.style.display = "block";
+            profileSection.style.display = "none";
 
             try {
                 // Fetch user ID from username
                 const userId = await fetchUserId(usernameInput);
                 if (!userId) {
                     fetchErrors.innerHTML += "<p>Unable to fetch user ID.</p>";
+                    loadingText.style.display = "none";
                     return;
                 }
 
@@ -152,6 +129,7 @@
                 const profileData = await fetchProfileData(userId);
                 if (!profileData) {
                     fetchErrors.innerHTML += "<p>Unable to fetch profile data.</p>";
+                    loadingText.style.display = "none";
                     return;
                 }
 
@@ -173,10 +151,12 @@
                 document.getElementById("following").innerText = followingCount || "N/A";
                 document.getElementById("avatar").src = avatarUrl || "https://www.roblox.com/asset-thumbnail/image?assetId=184573601&width=420&height=420&format=png";
 
-                // Display profile section
+                // Hide loading text and show profile section
+                loadingText.style.display = "none";
                 profileSection.style.display = "block";
             } catch (error) {
                 fetchErrors.innerHTML += "<p>Error occurred while fetching data. Please try again.</p>";
+                loadingText.style.display = "none";
                 console.error(error);
             }
         }
