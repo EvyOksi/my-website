@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRefresher</title>
+    <title>Roblox Profile Lookup</title>
     <style>
         body {
             display: flex;
@@ -20,19 +20,17 @@
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease;
-        }
-        .container:hover {
-            transform: translateY(-5px);
+            width: 90%;
+            max-width: 400px;
         }
         h1 {
-            margin-bottom: 20px;
-            font-size: 2.5em;
+            font-size: 1.8em;
             color: #333;
+            margin-bottom: 15px;
         }
         input {
             width: 80%;
-            padding: 15px;
+            padding: 10px;
             margin: 10px 0;
             font-size: 1em;
             border: 2px solid #ddd;
@@ -43,60 +41,105 @@
             border-color: #007BFF;
             outline: none;
         }
-        .output {
-            font-size: 1.2em;
-            margin-top: 20px;
-            padding: 15px;
-            border: 2px dashed #007BFF;
-            border-radius: 5px;
-            min-height: 50px;
-            background: #f9f9f9;
-            transition: background 0.3s ease;
-        }
-        .output.active {
-            background: #e9f7ff;
-        }
         button {
-            padding: 10px 20px;
+            padding: 10px 15px;
             font-size: 1em;
-            margin-top: 20px;
             cursor: pointer;
             background: #007BFF;
             color: #fff;
             border: none;
             border-radius: 5px;
             transition: background 0.3s ease, transform 0.3s ease;
+            margin-top: 10px;
         }
         button:hover {
             background: #0056b3;
             transform: translateY(-2px);
         }
+        .profile {
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+        }
+        img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        .output {
+            font-size: 1em;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>CRefresher</h1>
-        <input type="text" id="userInput" placeholder="Type something..." oninput="updateText()">
-        <div class="output" id="displayText"></div>
-        <button onclick="copyText()">Copy Text</button>
+        <h1>Roblox Profile Lookup</h1>
+        <input type="text" id="username" placeholder="Enter Roblox username">
+        <button onclick="fetchRobloxData()">Fetch Profile</button>
+
+        <div class="profile" id="profileSection">
+            <img id="avatar" src="" alt="Profile Picture">
+            <div class="output"><strong>Username:</strong> <span id="displayUsername"></span></div>
+            <div class="output"><strong>Display Name:</strong> <span id="displayName"></span></div>
+            <div class="output"><strong>Account Age:</strong> <span id="accountAge"></span> days</div>
+            <div class="output"><strong>Followers:</strong> <span id="followers"></span></div>
+            <div class="output"><strong>Following:</strong> <span id="following"></span></div>
+        </div>
     </div>
 
     <script>
-        function updateText() {
-            const input = document.getElementById("userInput").value;
-            const display = document.getElementById("displayText");
-            display.innerText = input;
-            display.classList.toggle('active', input !== '');
-        }
+        async function fetchRobloxData() {
+            let username = document.getElementById("username").value.trim();
+            if (!username) {
+                alert("Please enter a username.");
+                return;
+            }
 
-        function copyText() {
-            const text = document.getElementById("displayText").innerText;
-            if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    alert("Copied to clipboard!");
-                }).catch(err => {
-                    alert("Copy failed: " + err);
+            try {
+                // Fetch user ID from username
+                let userResponse = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
                 });
+                let userData = await userResponse.json();
+                if (!userData.data.length) {
+                    alert("User not found.");
+                    return;
+                }
+                let userId = userData.data[0].id;
+
+                // Fetch user profile details
+                let profileResponse = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+                let profileData = await profileResponse.json();
+
+                // Fetch avatar
+                let avatarResponse = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=png`);
+                let avatarData = await avatarResponse.json();
+
+                // Fetch followers & following count
+                let followersResponse = await fetch(`https://friends.roblox.com/v1/users/${userId}/followers/count`);
+                let followingResponse = await fetch(`https://friends.roblox.com/v1/users/${userId}/followings/count`);
+                let followersData = await followersResponse.json();
+                let followingData = await followingResponse.json();
+
+                // Update profile display
+                document.getElementById("displayUsername").innerText = profileData.name;
+                document.getElementById("displayName").innerText = profileData.displayName;
+                document.getElementById("accountAge").innerText = profileData.created.slice(0, 10); // Account creation date
+                document.getElementById("followers").innerText = followersData.count;
+                document.getElementById("following").innerText = followingData.count;
+                document.getElementById("avatar").src = avatarData.data[0].imageUrl;
+
+                document.getElementById("profileSection").style.display = "block";
+            } catch (error) {
+                alert("Failed to fetch data. Please try again.");
+                console.error(error);
             }
         }
     </script>
