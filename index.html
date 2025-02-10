@@ -1,126 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Profile Lookup</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1a1a1a;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #333;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 400px;
-        }
-        h1 {
-            text-align: center;
-            font-size: 1.5rem;
-            color: #ccc;
-        }
-        input[type="text"], button {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            border: none;
-            font-size: 16px;
-        }
-        input[type="text"] {
-            background-color: #444;
-            color: white;
-        }
-        button {
-            background-color: #00b0ff;
-            color: white;
-        }
-        button:hover {
-            background-color: #0091cc;
-        }
-        .loading {
-            text-align: center;
-            display: none;
-            color: #00b0ff;
-        }
-        .result p {
-            font-size: 1rem;
-            color: #ccc;
-        }
-        .avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Data Fetcher</title>
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Custom Styles */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f7fafc;
+    }
+
+    .input-container input {
+      transition: 0.3s ease-in-out;
+    }
+
+    .input-container input:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+
+    .button-container button:hover {
+      background-color: #4CAF50;
+      transform: scale(1.1);
+    }
+
+    .result-container {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .result-container:hover {
+      transform: translateY(-10px);
+    }
+
+    .profile-img {
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Roblox Profile Lookup</h1>
-    <input type="text" id="username" placeholder="Enter Roblox Username" />
-    <button onclick="fetchProfile()">Fetch Profile</button>
-    <div class="loading" id="loading">Loading...</div>
-    <div id="result"></div>
-</div>
+  <div class="flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-500 to-indigo-500">
+    <div class="text-white text-center px-8 py-12 rounded-xl bg-opacity-80 backdrop-blur-md shadow-lg" data-aos="fade-up">
+      <h1 class="text-3xl font-bold mb-6">Enter Roblox Username</h1>
+      <div class="input-container mb-6">
+        <input type="text" id="username" placeholder="Username" class="w-full p-3 rounded-lg text-black" />
+      </div>
+      <div class="button-container mb-6">
+        <button onclick="fetchData()" class="px-8 py-3 rounded-lg bg-green-500 text-white text-xl shadow-md transform transition duration-300 ease-in-out">Fetch Data</button>
+      </div>
 
-<script>
-    async function fetchProfile() {
-        const username = document.getElementById('username').value;
-        const loading = document.getElementById('loading');
-        const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = '';
-        loading.style.display = 'block';
+      <div class="result-container mt-8" id="result" style="display:none;" data-aos="zoom-in">
+        <div class="mb-4">
+          <img id="profile-img" class="profile-img" src="" alt="Profile Picture">
+        </div>
+        <h2 class="font-semibold text-xl mb-2" id="displayName">Display Name</h2>
+        <p class="mb-2" id="premiumStatus">Premium: No</p>
+        <p class="mb-2" id="userId">User ID: 123456</p>
+        <p class="mb-2" id="cookies">Cookies: N/A</p>
+      </div>
+    </div>
+  </div>
 
-        try {
-            // First request: Get user ID from username
-            const userIdResponse = await fetch('https://users.roblox.com/v1/usernames/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usernames: [username] })
-            });
-            
-            const userIdData = await userIdResponse.json();
-            
-            if (userIdData.data.length === 0) {
-                throw new Error('User not found');
-            }
+  <script>
+    // Initialize AOS animations
+    AOS.init();
 
-            const userId = userIdData.data[0].id;
+    // Function to fetch Roblox profile data
+    async function fetchData() {
+      const username = document.getElementById('username').value;
+      const resultContainer = document.getElementById('result');
 
-            // Second request: Fetch profile data
-            const profileResponse = await fetch(`https://users.roblox.com/v1/users/${userId}`);
-            const profileData = await profileResponse.json();
+      if (!username) {
+        alert('Please enter a username!');
+        return;
+      }
 
-            // Third request: Fetch avatar image URL
-            const avatarResponse = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`);
-            const avatarData = await avatarResponse.json();
+      try {
+        // Fetch profile data from Roblox API
+        const profile = await getRobloxProfile(username);
+        const premiumStatus = await getRobloxPremiumStatus(profile.userId);
+        const cookies = await getCookies();
 
-            // Hide loading message
-            loading.style.display = 'none';
+        // Populate UI with fetched data
+        document.getElementById('profile-img').src = profile.profilePicture;
+        document.getElementById('displayName').textContent = profile.displayName;
+        document.getElementById('premiumStatus').textContent = `Premium: ${premiumStatus}`;
+        document.getElementById('userId').textContent = `User ID: ${profile.userId}`;
+        document.getElementById('cookies').textContent = `Cookies: ${cookies}`;
 
-            // Display profile data
-            resultDiv.innerHTML = `
-                <p><strong>Username:</strong> ${profileData.name}</p>
-                <p><strong>Display Name:</strong> ${profileData.displayName}</p>
-                <p><strong>Account Age:</strong> ${new Date(profileData.created).toLocaleDateString()}</p>
-                <img src="${avatarData.data[0].imageUrl}" class="avatar" alt="Avatar">
-            `;
-        } catch (error) {
-            loading.style.display = 'none';
-            resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-        }
+        // Show result
+        resultContainer.style.display = 'block';
+      } catch (error) {
+        console.log('Error fetching data:', error);
+        alert('Failed to fetch data');
+      }
     }
-</script>
+
+    // Fetch Roblox profile data
+    async function getRobloxProfile(username) {
+      const url = "https://users.roblox.com/v1/usernames/users";
+      const payload = JSON.stringify({ usernames: [username], excludeBannedUsers: false });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: payload,
+      });
+
+      const data = await response.json();
+      if (!data.data || data.data.length === 0) {
+        throw new Error('User not found');
+      }
+
+      const user = data.data[0];
+      return {
+        userId: user.id,
+        displayName: user.displayName || username,
+        profilePicture: `https://www.roblox.com/bust-thumbnail/image?userId=${user.id}&width=420&height=420&format=png`,
+      };
+    }
+
+    // Fetch Roblox premium status
+    async function getRobloxPremiumStatus(userId) {
+      const url = `https://premiumfeatures.roblox.com/v1/users/${userId}/validate-membership`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 200) {
+        return 'Premium';
+      } else {
+        return 'Not Premium';
+      }
+    }
+
+    // Fetch cookies (Simulated for demo, replace with real logic)
+    async function getCookies() {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve('SampleCookieData');
+        }, 1000);
+      });
+    }
+  </script>
 
 </body>
 </html>
