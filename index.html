@@ -13,6 +13,7 @@
             margin: 0;
             background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
         }
         .container {
             text-align: center;
@@ -74,9 +75,41 @@
             background: #f9f9f9;
             margin-top: 10px;
         }
+        .corner-design {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #007BFF;
+            border-radius: 50%;
+        }
+        .top-left {
+            top: 0;
+            left: 0;
+            border-top-left-radius: 0;
+        }
+        .top-right {
+            top: 0;
+            right: 0;
+            border-top-right-radius: 0;
+        }
+        .bottom-left {
+            bottom: 0;
+            left: 0;
+            border-bottom-left-radius: 0;
+        }
+        .bottom-right {
+            bottom: 0;
+            right: 0;
+            border-bottom-right-radius: 0;
+        }
     </style>
 </head>
 <body>
+    <div class="corner-design top-left"></div>
+    <div class="corner-design top-right"></div>
+    <div class="corner-design bottom-left"></div>
+    <div class="corner-design bottom-right"></div>
+
     <div class="container">
         <h1>Roblox Profile Lookup</h1>
         <input type="text" id="username" placeholder="Enter Roblox username">
@@ -89,58 +122,130 @@
             <div class="output"><strong>Account Age:</strong> <span id="accountAge"></span> days</div>
             <div class="output"><strong>Followers:</strong> <span id="followers"></span></div>
             <div class="output"><strong>Following:</strong> <span id="following"></span></div>
+            <div class="output" id="fetchErrors" style="color: red;"></div>
         </div>
     </div>
 
     <script>
         async function fetchRobloxData() {
-            let username = document.getElementById("username").value.trim();
-            if (!username) {
+            const usernameInput = document.getElementById("username").value.trim();
+            const fetchErrors = document.getElementById("fetchErrors");
+            fetchErrors.innerHTML = ""; // Clear previous errors
+
+            if (!usernameInput) {
                 alert("Please enter a username.");
                 return;
             }
 
+            const profileSection = document.getElementById("profileSection");
+            profileSection.style.display = "none"; // Hide profile section initially
+
             try {
                 // Fetch user ID from username
-                let userResponse = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+                const userId = await fetchUserId(usernameInput);
+                if (!userId) {
+                    fetchErrors.innerHTML += "<p>Unable to fetch user ID.</p>";
+                    return;
+                }
+
+                // Fetch user profile details
+                const profileData = await fetchProfileData(userId);
+                if (!profileData) {
+                    fetchErrors.innerHTML += "<p>Unable to fetch profile data.</p>";
+                    return;
+                }
+
+                // Fetch avatar
+                const avatarUrl = await fetchAvatar(userId);
+                if (!avatarUrl) {
+                    fetchErrors.innerHTML += "<p>Unable to fetch avatar.</p>";
+                }
+
+                // Fetch followers & following count
+                const followersCount = await fetchFollowersCount(userId);
+                const followingCount = await fetchFollowingCount(userId);
+
+                // Update profile display
+                document.getElementById("displayUsername").innerText = profileData.name || "N/A";
+                document.getElementById("displayName").innerText = profileData.displayName || "N/A";
+                document.getElementById("accountAge").innerText = profileData.created ? calculateAccountAge(profileData.created) : "N/A";
+                document.getElementById("followers").innerText = followersCount || "N/A";
+                document.getElementById("following").innerText = followingCount || "N/A";
+                document.getElementById("avatar").src = avatarUrl || "https://www.roblox.com/asset-thumbnail/image?assetId=184573601&width=420&height=420&format=png";
+
+                // Display profile section
+                profileSection.style.display = "block";
+            } catch (error) {
+                fetchErrors.innerHTML += "<p>Error occurred while fetching data. Please try again.</p>";
+                console.error(error);
+            }
+        }
+
+        async function fetchUserId(username) {
+            try {
+                const response = await fetch(`https://users.roblox.com/v1/usernames/users`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
                 });
-                let userData = await userResponse.json();
-                if (!userData.data.length) {
-                    alert("User not found.");
-                    return;
-                }
-                let userId = userData.data[0].id;
-
-                // Fetch user profile details
-                let profileResponse = await fetch(`https://users.roblox.com/v1/users/${userId}`);
-                let profileData = await profileResponse.json();
-
-                // Fetch avatar
-                let avatarResponse = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=png`);
-                let avatarData = await avatarResponse.json();
-
-                // Fetch followers & following count
-                let followersResponse = await fetch(`https://friends.roblox.com/v1/users/${userId}/followers/count`);
-                let followingResponse = await fetch(`https://friends.roblox.com/v1/users/${userId}/followings/count`);
-                let followersData = await followersResponse.json();
-                let followingData = await followingResponse.json();
-
-                // Update profile display
-                document.getElementById("displayUsername").innerText = profileData.name;
-                document.getElementById("displayName").innerText = profileData.displayName;
-                document.getElementById("accountAge").innerText = profileData.created.slice(0, 10); // Account creation date
-                document.getElementById("followers").innerText = followersData.count;
-                document.getElementById("following").innerText = followingData.count;
-                document.getElementById("avatar").src = avatarData.data[0].imageUrl;
-
-                document.getElementById("profileSection").style.display = "block";
+                const data = await response.json();
+                return data.data.length ? data.data[0].id : null;
             } catch (error) {
-                alert("Failed to fetch data. Please try again.");
-                console.error(error);
+                console.error("Error fetching user ID", error);
+                return null;
             }
+        }
+
+        async function fetchProfileData(userId) {
+            try {
+                const response = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error("Error fetching profile data", error);
+                return null;
+            }
+        }
+
+        async function fetchAvatar(userId) {
+            try {
+                const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=png`);
+                const data = await response.json();
+                return data.data[0].imageUrl || null;
+            } catch (error) {
+                console.error("Error fetching avatar", error);
+                return null;
+            }
+        }
+
+        async function fetchFollowersCount(userId) {
+            try {
+                const response = await fetch(`https://friends.roblox.com/v1/users/${userId}/followers/count`);
+                const data = await response.json();
+                return data.count || 0;
+            } catch (error) {
+                console.error("Error fetching followers count", error);
+                return 0;
+            }
+        }
+
+        async function fetchFollowingCount(userId) {
+            try {
+                const response = await fetch(`https://friends.roblox.com/v1/users/${userId}/followings/count`);
+                const data = await response.json();
+                return data.count || 0;
+            } catch (error) {
+                console.error("Error fetching following count", error);
+                return 0;
+            }
+        }
+
+        function calculateAccountAge(creationDate) {
+            const currentDate = new Date();
+            const accountCreationDate = new Date(creationDate);
+            const ageInMilliseconds = currentDate - accountCreationDate;
+            const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24));
+            return ageInDays;
         }
     </script>
 </body>
